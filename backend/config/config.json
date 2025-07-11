@@ -1,0 +1,25 @@
+{
+  "development": {
+    "username": "root",
+    "password": "您的MySQL密码",
+    "database": "blindbox_dev",
+    "host": "127.0.0.1",
+    "dialect": "mysql",
+    "timezone": "+08:00",
+    "logging": false
+  },
+  "test": {
+    "username": "root",
+    "password": null,
+    "database": "blindbox_test",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "production": {
+    "username": "root",
+    "password": null,
+    "database": "blindbox_prod",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  }
+}
