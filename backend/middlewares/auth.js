@@ -1,37 +1,19 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 const { Op } = require('sequelize');
+const jwtSecret = process.env.JWT_SECRET || 'blindbox_secret';
 
-// 错误响应模板
-const authError = (res, message) => {
-  return res.status(401).json({
-    success: false,
-    message: message || '认证失败，请重新登录'
-  });
-};
-
-/**
- * JWT认证中间件
- * 功能：
- * 1. 从Header/Query/Cookie中提取Token
- * 2. 验证Token有效性
- * 3. 注入用户信息到req.user
- */
 const authenticate = async (req, res, next) => {
   try {
-    // 从多种位置获取token（兼容不同客户端）
-    const token = req.headers.authorization?.split(' ')[1] || 
-                 req.query.token || 
-                 req.cookies?.token;
-
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith('Bearer ')
+      ? authHeader.split(' ')[1]
+      : null;
     if (!token) {
-      return authError(res, '未提供认证令牌');
+      return res.status(401).json({ message: '未提供认证令牌' });
     }
-
-    // 验证JWT
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = require('jsonwebtoken').verify(token, jwtSecret);
     
-    // 查询用户是否存在
     const user = await User.findOne({
       where: {
         id: decoded.id,
@@ -46,20 +28,11 @@ const authenticate = async (req, res, next) => {
       return authError(res, '用户不存在或已被禁用');
     }
 
-    // 注入用户信息到请求对象
     req.user = user.get({ plain: true });
     next();
   } catch (err) {
     console.error('JWT验证失败:', err.message);
-    
-    if (err.name === 'TokenExpiredError') {
-      return authError(res, '登录已过期，请重新登录');
-    }
-    if (err.name === 'JsonWebTokenError') {
-      return authError(res, '无效的认证令牌');
-    }
-    
-    authError(res, '认证失败');
+    return res.status(401).json({ success: false, message: '无效的认证令牌' });
   }
 };
 
@@ -99,7 +72,7 @@ const optionalAuth = async (req, res, next) => {
                  req.cookies?.token;
 
     if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, jwtSecret);
       const user = await User.findByPk(decoded.id, {
         attributes: { exclude: ['password'] }
       });
@@ -114,5 +87,11 @@ const optionalAuth = async (req, res, next) => {
 module.exports = {
   authenticate, // 强制认证
   authorize,    // 角色授权
-  optionalAuth  // 可选认证
+  optionalAuth, // 可选认证
+  requireLogin: (req, res, next) => { // 修正导出方式
+    if (!req.user) {
+      return res.status(401).json({ message: '未登录' });
+    }
+    next();
+  }
 };

@@ -3,39 +3,35 @@
 const fs = require('fs');
 const path = require('path');
 const Sequelize = require('sequelize');
-const process = require('process');
-const basename = path.basename(__filename);
-const env = process.env.NODE_ENV || 'development';
-const config = require(__dirname + '/../config/config.json')[env];
+const sequelize = require('../config/sequelize');
+
 const db = {};
 
-let sequelize;
-if (config.use_env_variable) {
-  sequelize = new Sequelize(process.env[config.use_env_variable], config);
-} else {
-  sequelize = new Sequelize(config.database, config.username, config.password, config);
-}
-
-fs
-  .readdirSync(__dirname)
-  .filter(file => {
-    return (
-      file.indexOf('.') !== 0 &&
-      file !== basename &&
-      file.slice(-3) === '.js' &&
-      file.indexOf('.test.js') === -1
-    );
-  })
+// 只加载以大写字母开头的 js 文件（模型文件）
+fs.readdirSync(__dirname)
+  .filter(file =>
+    file !== 'index.js' &&
+    file.endsWith('.js') &&
+    /^[A-Z]/.test(file)
+  )
   .forEach(file => {
-    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
-    db[model.name] = model;
+    try {
+      const modelFunc = require(path.join(__dirname, file));
+      if (typeof modelFunc === 'function') {
+        const model = modelFunc(sequelize, Sequelize.DataTypes);
+        db[model.name] = model;
+      } else {
+        console.warn(`模型文件 ${file} 不是函数导出，已跳过`);
+      }
+    } catch (err) {
+      console.error(`加载模型文件 ${file} 时出错:`, err);
+    }
   });
 
-Object.keys(db).forEach(modelName => {
-  if (db[modelName].associate) {
-    db[modelName].associate(db);
-  }
-});
+// 统一写关联关系
+db.Order.belongsTo(db.BlindBox, { foreignKey: 'blindBoxId' });
+db.Order.belongsTo(db.User, { foreignKey: 'userId' });
+db.Comment.belongsTo(db.User, { foreignKey: 'userId' });
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;

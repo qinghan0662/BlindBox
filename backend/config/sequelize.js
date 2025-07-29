@@ -1,15 +1,11 @@
 const { Sequelize } = require('sequelize');
-const dbConfig = require('./db');
 
-const sequelize = new Sequelize(
-  dbConfig.database,
-  dbConfig.username,
-  dbConfig.password, {
-    host: dbConfig.host,
-    dialect: dbConfig.dialect,
-    timezone: dbConfig.timezone,
-    logging: false // 关闭SQL日志（生产环境建议开启）
-  }
-);
+// 请将 '数据库名'、'用户名'、'密码' 替换为你实际的 MySQL 信息
+const sequelize = new Sequelize('blindbox_db', 'root', '!Qing12345han', {
+  host: '127.0.0.1',
+  port: 3306,
+  dialect: 'mysql',
+  logging: false
+});
 
 module.exports = sequelize;
